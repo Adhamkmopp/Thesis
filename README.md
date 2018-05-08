@@ -3,6 +3,7 @@
 
 Steps:
 - [x] Establish a fast command line script for automatic extraction and merging of unmapped reads
+- [] Filter "low complexity reads"
 - [x] Create a pure viral database for BLAST/bwa, alongside a mixed database for detecting false positives
 
 1. Command line script in bash:
@@ -35,7 +36,9 @@ for sample in $all; do
 done
 
 ```
-2. Creation of a viral database for local blast:
+2. Filter out low complexity reads and low quality reads (dust-threshold=2.5/quality filter=50) 
+
+3. Creation of a viral database for local blast:
 The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov/genome/viruses/, and transformed into a BLAST-ready database using blast+ with the command
 ```bash
 makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\vDatabase"
