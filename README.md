@@ -8,7 +8,7 @@ Steps:
 
 1. Command line script in bash:
 
-This script extracts a sample of the 1000 genomes mapped and unmapped bam files, and extracts/merges unmapped and chimeric pair reads. Fastq files are created from the merged bam files in the final step
+This script extracts a sample of the 1000 genomes mapped and unmapped bam files, and extracts/merges unmapped and chimeric pair reads. Fastq files are created from the merged bam files in the final step. The merged bam file contains reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward)
 ```bash
 #!/bin/bash
 
