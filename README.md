@@ -46,12 +46,14 @@ The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov
 ```bash
 makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\viral.fna"
 ```
-All defaults blast query
-```bash
- blastn -query HG0100.fasta -db "$BLASTDB/viral.fna"
-```
-BWA index construction on the same viral database and subsequent alignment:
+bwa index construction:
 ```bash
 bwa index -p viral -a is /home/adhamkmopp/viral.fna
+```
+
+4. Blast/bwa on test sample HG0100.bam
+
+```bash
+blastn -query HG0100.fasta -db "$BLASTDB/viral.fna"
 bwa mem -p viral HG0100.fastq > viralbwa
 ```
