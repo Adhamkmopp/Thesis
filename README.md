@@ -48,7 +48,7 @@ makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\v
 ```
 All defaults blast query
 ```bash
- blastn -query HG0100.fastq -db "$BLASTDB/viral.fna"
+ blastn -query HG0100.fasta -db "$BLASTDB/viral.fna"
 ```
 BWA index construction on the same viral database and subsequent alignment:
 ```bash
