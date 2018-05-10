@@ -5,6 +5,8 @@ Steps:
 - [x] Establish a fast command line script for automatic extraction and merging of unmapped reads
 - [ ] Filter "low complexity reads"
 - [x] Create a pure viral database for BLAST/bwa, alongside a mixed database for detecting false positives
+- [x] Run blastn query on one sample against the viral database
+- [x] Run bwa mem query on one sample against the viral database
 
 1. Command line script in bash:
 
