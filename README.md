@@ -39,14 +39,17 @@ done
 2. Filter out low complexity reads and low quality reads (dust-threshold=2.5/quality filter=50) 
 
 3. Creation of a viral database for local blast:
-The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov/genome/viruses/, and transformed into a BLAST-ready database using blast+ with the command
+The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov/genome/viruses/, and transformed into a BLAST-ready database using blast+ with the command:
+
 ```bash
-makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\vDatabase"
+makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\viral.fna"
 ```
 All defaults blast query
 ```bash
  blastn -query HG0100.fastq -db "$BLASTDB/viral.fna"
 ```
+BWA index construction on the same viral database and subsequent alignment:
 ```bash
-bwa index -p -is $HOME/viral.1.fna
+bwa index -p viral -a is /home/adhamkmopp/viral.fna
+bwa mem -p viral HG0100.fastq > viralbwa
 ```
