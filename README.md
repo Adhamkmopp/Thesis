@@ -47,3 +47,6 @@ All defaults blast query
 ```bash
  blastn -query HG0100.fastq -db "$BLASTDB/viral.fna"
 ```
+```bash
+bwa index -p -is /home/adhamkmopp/viral.1.fna
+```
