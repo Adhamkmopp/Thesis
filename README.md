@@ -43,4 +43,7 @@ The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov
 ```bash
 makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\vDatabase"
 ```
-
+All defaults blast query
+```bash
+ blastn -query HG0100.fastq -db "$BLASTDB/viral.fna"
+```
