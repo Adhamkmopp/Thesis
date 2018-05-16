@@ -42,13 +42,17 @@ done
 
 3. Creation of a viral database for local blast:
 The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov/genome/viruses/, and transformed into a BLAST-ready database using blast+ with the command:
-
-Viruses[Organism] AND srcdb_refseq[PROP] NOT unclassified dsDNA phages[Organism] NOT wgs[PROP] NOT cellular organisms[ORGN] NOT AC_000001:AC_999999[PACC] NOT "phg"[Division] 
-
-
 ```bash
 makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\viral.fna"
 ```
+
+But firstly, the database had to be filtered for phages. The search below through ncbi yielded the database minus phages, and unclassified phages:
+
+```bash
+Viruses[Organism] AND srcdb_refseq[PROP] NOT unclassified dsDNA phages[Organism] NOT unclassified virophages[organism] NOT "phg"[Division] NOT wgs[PROP] NOT cellular organisms[ORGN] NOT AC_000001:AC_999999[PACC] 
+```
+
+
 bwa index construction:
 ```bash
 bwa index -p viral -a is /home/adhamkmopp/viral.fna
