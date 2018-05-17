@@ -54,9 +54,9 @@ Viruses[Organism] AND srcdb_refseq[PROP] NOT unclassified dsDNA phages[Organism]
 ```
 Potential representative genomes from the assembly database:
 
-Fungi(14)
-Bacteria(1,543)
-Archaea(140)
+Fungi(14/2)
+Bacteria(1,543/1636)
+Archaea(140/389)
 
 
 ```bash
