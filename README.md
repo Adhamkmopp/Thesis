@@ -42,6 +42,7 @@ done
 
 3. Creation of a viral database for local blast:
 The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov/genome/viruses/, and transformed into a BLAST-ready database using blast+ with the command:
+
 ```bash
 makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\viral.fna"
 ```
@@ -52,7 +53,6 @@ But firstly, the database had to be filtered for phages. The search below throug
 Viruses[Organism] AND srcdb_refseq[PROP] NOT unclassified dsDNA phages[Organism] NOT unclassified virophages[organism] NOT "phg"[Division] NOT wgs[PROP] NOT cellular organisms[ORGN] NOT AC_000001:AC_999999[PACC] 
 ```
 
-
 bwa index construction:
 ```bash
 bwa index -p viral -a is /home/adhamkmopp/viral.fna
@@ -60,7 +60,15 @@ bwa index -p viral -a is /home/adhamkmopp/viral.fna
 
 4. Blast/bwa on test sample HG0100.bam
 
+Before doing a blast seach, a taxonomic ID dump was obtained from (ftp://ftp.ncbi.nlm.nih.gov/blast/db/taxdb.tar.gz) to allow the inclusion of scientific names in the results. The custom output was as follows:
+
+| qseqid | sseqid | evalue | bitscore | sgi | sacc | staxids | sscinames | scomnames | stitle |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | 
+| Query ID | Seq ID | E-Value | Bit score | Subject GI | Subject Accession | Subject Tax ID | Subject Scientific Name | Subject Common name | Subject Title |
+
+
 ```bash
-blastn -query HG0100.fasta -db "$BLASTDB/viral.fna"
+blastn -query HG0100.fasta -db "viraldb.fasta" -outfmt '6 qseqid sseqid evalue bitscore sgi sacc staxids sscinames scomnames stitle'  > HG0100.blast
+
 bwa mem -p viral HG0100.fastq > viralbwa
 ```
