@@ -10,7 +10,7 @@ Steps:
 
 ## 1. Command line script in bash:
 
-This script extracts a sample of the 1000 genomes mapped and unmapped bam files, and extracts/merges unmapped and chimeric pair reads. Fastq files are created from the merged bam files in the final step. The merged bam file contains reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward)
+This script below will be the main script that automates the entire pipeline. Elements will be added after they are executed seperately and validated. Initially, the script serves to extract samples of the 1000 genomes mapped and unmapped bam files, and extracts/merges unmapped and chimeric pair reads. Fastq/a files are created from the merged bam files in the final step. The merged bam file contains reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward), and outputs a single interleaved file.
 ```bash
 #!/bin/bash
 
@@ -27,33 +27,41 @@ for sample in $all; do
 	echo $unmapped
 	curl $page$mapped --output $sample.mtemp.bam
 	curl $page$unmapped --output $sample.utemp.bam	
-	samtools view -@ 2048 -h -F 0x4 -f 0x8 $sample.mtemp.bam -o $sample.mchi.bam 
-	samtools view -@ 2048 -h -f 0x4 $sample.mtemp.bam -o $sample.uchi.bam
-	samtools merge -@ 2048 -n $sample.merged.bam $sample.mchi.bam $sample.uchi.bam $sample.utemp.bam
+	samtools view -@ 64 -h -F 0x4 -f 0x8 $sample.mtemp.bam -o $sample.mchi.bam 
+	samtools view -@ 64 -h -f 0x4 $sample.mtemp.bam -o $sample.uchi.bam
+	samtools merge -@ 64 -n $sample.merged.bam $sample.mchi.bam $sample.uchi.bam $sample.utemp.bam
+	samtools sort -@ 64 -n $sample.merged.bam -o $sample.sorted.bam
 	rm $sample.mchi.bam 
 	rm $sample.uchi.bam
 	rm $sample.utemp.bam
 	rm $sample.mtemp.bam
-	samtools fastq -@ 2048 -N -t $sample.merged.bam > $sample.fastq
+	samtools fastq -@ 64 -N -t $sample.sorted.bam > $sample.fastq
+	samtools fasta -@ 64 -N -t $sample.sorted.bam > $sample.fasta
+	
 done
+
 
 ```
 ## 2. Filter out low complexity reads and low quality reads (dust-threshold=2.5/quality filter=50) 
 
+Nothing yet
+
 ## 3. Creation of a viral database for local blast:
-The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov/genome/viruses/, and transformed into a BLAST-ready database using blast+ with the command:
-
-```bash
-makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\viral.fna"
-```
-
-But firstly, the database had to be filtered for phages. The search below through ncbi yielded the database minus phages, and unclassified phages:
+The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov/genome/viruses/ after filtering for phages:
 
 ```bash
 Viruses[Organism] AND srcdb_refseq[PROP] NOT unclassified dsDNA phages[Organism] NOT unclassified virophages[organism] NOT "phg"[Division] NOT wgs[PROP] NOT cellular organisms[ORGN] NOT AC_000001:AC_999999[PACC] 
 ```
 
-bwa index construction:
+It was then transformed into a BLAST-ready local database using blast+ with the command:
+
+```bash
+makeblastdb -in "$BLASTDB/viral.fna" -dbtype nucl -parse_seqids -out "$BLASTDB\viral.fna"
+```
+Where $BLASTDB is the path to the fna/fasta file containing the viral genomes (~7,000 in total)
+
+A BWA index was constructed from the same ncbi RefSeq fna/fasta file using the command:
+
 ```bash
 bwa index -p viral -a is /home/adhamkmopp/viral.fna
 ```
@@ -68,7 +76,7 @@ Before doing a blast seach, a taxonomic ID dump was obtained from (ftp://ftp.ncb
 
 
 ```bash
-blastn -query HG0100.fasta -db "viraldb.fasta" -outfmt '6 qseqid sseqid evalue bitscore sgi sacc staxids sscinames scomnames stitle'  > HG0100.blast
+blastn -num_threads 64 -query HG0100.fasta -db "viraldb.fasta" -outfmt '6 qseqid sseqid evalue bitscore sgi sacc staxids sscinames scomnames stitle'  > HG0100.blast
 ```
 
 
