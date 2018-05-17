@@ -52,6 +52,16 @@ The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov
 ```bash
 Viruses[Organism] AND srcdb_refseq[PROP] NOT unclassified dsDNA phages[Organism] NOT unclassified virophages[organism] NOT "phg"[Division] NOT wgs[PROP] NOT cellular organisms[ORGN] NOT AC_000001:AC_999999[PACC] 
 ```
+Potential representative genomes from the assembly database:
+
+Fungi(14)
+Bacteria(1,543)
+Archaea(140)
+
+
+```bash
+("Bacteria"[Organism] OR "Fungi"[Organism] OR "Archaea" [Organism]) AND (latest[filter] AND "complete genome"[filter] AND "representative genome"[filter]) 
+```
 
 It was then transformed into a BLAST-ready local database using blast+ with the command:
 
