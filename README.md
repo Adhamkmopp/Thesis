@@ -8,7 +8,7 @@ Steps:
 - [x] Run blastn query on one sample against the viral database
 - [x] Run bwa mem query on one sample against the viral database
 
-1. Command line script in bash:
+## 1. Command line script in bash:
 
 This script extracts a sample of the 1000 genomes mapped and unmapped bam files, and extracts/merges unmapped and chimeric pair reads. Fastq files are created from the merged bam files in the final step. The merged bam file contains reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward)
 ```bash
@@ -38,9 +38,9 @@ for sample in $all; do
 done
 
 ```
-2. Filter out low complexity reads and low quality reads (dust-threshold=2.5/quality filter=50) 
+## 2. Filter out low complexity reads and low quality reads (dust-threshold=2.5/quality filter=50) 
 
-3. Creation of a viral database for local blast:
+## 3. Creation of a viral database for local blast:
 The viral refseq database was downloaded from here: https://www.ncbi.nlm.nih.gov/genome/viruses/, and transformed into a BLAST-ready database using blast+ with the command:
 
 ```bash
@@ -58,7 +58,7 @@ bwa index construction:
 bwa index -p viral -a is /home/adhamkmopp/viral.fna
 ```
 
-4. Blast/bwa on test sample HG0100.bam
+## 4. Blast/bwa on test sample HG0100.bam
 
 Before doing a blast seach, a taxonomic ID dump was obtained from (ftp://ftp.ncbi.nlm.nih.gov/blast/db/taxdb.tar.gz) to allow the inclusion of scientific names in the results. The custom output was as follows:
 
@@ -69,6 +69,9 @@ Before doing a blast seach, a taxonomic ID dump was obtained from (ftp://ftp.ncb
 
 ```bash
 blastn -query HG0100.fasta -db "viraldb.fasta" -outfmt '6 qseqid sseqid evalue bitscore sgi sacc staxids sscinames scomnames stitle'  > HG0100.blast
+```
 
+
+```bash
 bwa mem -p viral HG0100.fastq > viralbwa
 ```
