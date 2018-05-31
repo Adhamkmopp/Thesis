@@ -132,7 +132,7 @@ Before doing a blast seach, a taxonomic ID dump was obtained from (ftp://ftp.ncb
 
 | qseqid | sseqid | evalue | bitscore | sgi | sacc | qstart | qend | sstart | send | stitle |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Query ID | Seq ID | E-Value | Bit score | Subject GI | Subject Accession | Query Start| Query End | Subject Start | |Subject End | Subject Title |
+| Query ID | Seq ID | E-Value | Bit score | Subject GI | Subject Accession | Query Start| Query End | Subject Start | | Subject End | Subject Title |
 
 
 ```bash
