@@ -21,10 +21,17 @@ brits=$(curl -l $parent | grep -P "HG001[1-5]{1,3}$") # obtains and stores a lis
 
 echo $brits
 
+
 for sample in $brits; do
 	mkdir $sample # sets up the structure of the directory such that each sample is placed alone by itself
-	cd $sample 
 	mkdir viralblast
+	mkdir viralbwa
+	mkdir mixedblast
+	mkdir /home/wbf326/viralblast/$sample
+	mkdir /home/wbf326/viralbwa/$sample
+	mkdir /home/wbf326/mixedblast/$sample
+	cd $sample 
+	
 	page="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/$sample/alignment/" # sets up the ftp directory path by inserting the sample
 	mapped=$(curl -l $page | grep -P ".+\.mapped.+\.bam$"); # sets up the ftp path to the mapped bam file and unmapped right below
 	unmapped=$(curl -l $page | grep -P ".+\.unmapped.+\.bam$");
@@ -42,8 +49,8 @@ for sample in $brits; do
 	cat $sample.dusted.fastq | paste - - - - | sed 's/^@/>/g'| cut -f1-2 | tr '\t' '\n' > $sample.fasta # transforms fastq into fasta using sed and trim
 
 	# outputs blast results on the total viral database with a custom column format specified elsewhere
-	blastn -num_threads 64 -query $sample.fasta -db "/home/wbf326/viraldb.fasta" -outfmt '6 qseqid sseqid evalue bitscore sgi sacc qstart qend sstart send stitle' >/home/wbf326/$sample/viralblast/$sample.blast
-	bwa mem -t 64 -p viraldb $sample.dusted.fastq > $sample.bwa
+	blastn -num_threads 64 -query $sample.fasta -db "/home/wbf326/viraldb.fasta" -outfmt '6 qseqid sseqid evalue bitscore sgi sacc qstart qend sstart send stitle' >/home/wbf326/viralblast/$sample/$sample.blast
+	bwa mem -t 64 -p /home/wbf326/viraldb $sample.dusted.fastq >/home/wbf326/viralbwa/$sample/$sample.bwa
 
 	# cleanup!except for the merged bam
 	rm $sample.mchi.bam 
@@ -52,7 +59,7 @@ for sample in $brits; do
 	rm $sample.mtemp.bam
 
 	samtoools -@ 64 flagstat $sample.sorted.bam > $sample.flagstat # sanity check on the number of unmapped and mapped reads
-	cd viralblast
+	cd /home/wbf326/viralblast/$sample
 	cut -f 11 $sample.blast |sort -r |  uniq -c | sort -n | tail -20 | sed -r 's/([0-9]) /\1\t/' >$sample.vHits # collects top 20 hits with counts into a single file
 	cut -f 2 $sample.vHits | while read hit; do awk "/$hit/" sorted > "$hit" ; done # loops over hits and gets reads that mapped to that particular viral hit
 	cd /home/wbf326
