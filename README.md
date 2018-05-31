@@ -130,7 +130,7 @@ bwa index -p viral -a is /home/adhamkmopp/viral.fna
 
 Before doing a blast seach, a taxonomic ID dump was obtained from (ftp://ftp.ncbi.nlm.nih.gov/blast/db/taxdb.tar.gz) to allow the inclusion of scientific names in the results. The custom output was as follows:
 
-| qseqid | sseqid | evalue | bitscore | sgi | sacc | qstart | qend | sstart | | send | stitle |
+| qseqid | sseqid | evalue | bitscore | sgi | sacc | qstart | qend | sstart | send | stitle |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Query ID | Seq ID | E-Value | Bit score | Subject GI | Subject Accession | Query Start| Query End | Subject Start | |Subject End | Subject Title |
 
