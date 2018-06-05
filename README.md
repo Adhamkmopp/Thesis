@@ -23,48 +23,93 @@ echo $brits
 
 
 for sample in $brits; do
-	mkdir $sample # sets up the structure of the directory such that each sample is placed alone by itself
-	mkdir viralblast
-	mkdir viralbwa
-	mkdir mixedblast
-	mkdir /home/wbf326/viralblast/$sample
-	mkdir /home/wbf326/viralbwa/$sample
-	mkdir /home/wbf326/mixedblast/$sample
-	cd $sample 
-	
+	mkdir /isdata/common/wbf326/samples/$sample # sets up the structure of the directory such that each sample is placed alone by itself
+	mkdir /isdata/common/wbf326/viralblast/samples/$sample
+	mkdir /isdata/common/wbf326/mixed/samples/$sample
+	cd /isdata/common/wbf326/samples/$sample 
 	page="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/$sample/alignment/" # sets up the ftp directory path by inserting the sample
 	mapped=$(curl -l $page | grep -P ".+\.mapped.+\.bam$"); # sets up the ftp path to the mapped bam file and unmapped right below
 	unmapped=$(curl -l $page | grep -P ".+\.unmapped.+\.bam$");
-	echo $mapped
-	echo $unmapped
+	echo "Mapped file is: $mapped"
+	echo "Unmapped file is: $unmapped"
+
+	echo "Downloading mapped and unmapped bam files.."
 	curl $page$mapped --output $sample.mtemp.bam # downloads the mapped bam file from the ftp list
 	curl $page$unmapped --output $sample.utemp.bam	 # downloads the unmapped bam file
-	samtools view -@ 64 -h -F 0x4 -f 0x8 $sample.mtemp.bam -o $sample.mchi.bam # extracts definetly mapped with unmapped pair reads into .mchi
+
+	echo "extracting mapped singletons.."
+	samtools view -@ 64 -h -F 0x4 -f 0x8 $sample.mtemp.bam -o $sample.mchi.txt # extracts definetly mapped with unmapped pair reads into .mchi
+
+	echo "extracting unmapped singletons.."
 	samtools view -@ 64 -h -f 0x4 $sample.mtemp.bam -o $sample.uchi.bam # extracts unmapped reads into .uchi
-	samtools merge -@ 64 -n $sample.merged.bam $sample.mchi.bam $sample.uchi.bam $sample.utemp.bam # merges ALL mappped and unmapped reads
-	samtools fastq -@ 64 -N -t -1 $sample.1.fastq -2 $sample.2.fastq $sample.sorted.bam # places forward/backward reads into respective fastq files
+
+	echo "merging unmapped singletons with unmapped pairs.."
+	samtools merge -@ 64 -n $sample.merged.bam $sample.uchi.bam $sample.utemp.bam # merges ALL mappped and unmapped reads
+
+	echo "creating fastq files from unmapped reads.."
+	samtools fastq -@ 64 -N -t -1 $sample.1.fastq -2 $sample.2.fastq $sample.merged.bam # places forward/backward reads into respective fastq files
 
 	# filters reads by quality and repeats as set in the paper and hopefully outputs a report in the correct place
-	sga preprocess -p 1 --quality-filter=50 --no-primer-check --dust-threshold=2.5 --out=$sample.dusted.fastq $sample.1.fastq $sample.2.fastq > 		$sample.dustreport 
+	sga preprocess -p 0 --quality-filter=50 --no-primer-check --dust-threshold=2.5 --out=$sample.dusted.fastq $sample.1.fastq $sample.2.fastq
+
+	echo "creating fasta from dusted fastq.."
 	cat $sample.dusted.fastq | paste - - - - | sed 's/^@/>/g'| cut -f1-2 | tr '\t' '\n' > $sample.fasta # transforms fastq into fasta using sed and trim
-
+	samtools faidx $sample.fasta
+	echo "blasting..."
 	# outputs blast results on the total viral database with a custom column format specified elsewhere
-	blastn -num_threads 64 -query $sample.fasta -db "/home/wbf326/viraldb.fasta" -outfmt '6 qseqid sseqid evalue bitscore sgi sacc qstart qend sstart send stitle' >/home/wbf326/viralblast/$sample/$sample.blast
-	bwa mem -t 64 -p /home/wbf326/viraldb $sample.dusted.fastq >/home/wbf326/viralbwa/$sample/$sample.bwa
+	blastn -num_threads 64 -evalue 1e-10 -query $sample.fasta -db "/isdata/common/wbf326/viralblast/viraldb.fasta" -outfmt '6 qseqid sseqid evalue bitscore sgi sacc slen qstart qend sstart send stitle' >/isdata/common/wbf326/viralblast/samples/$sample/$sample.blast
 
+
+	echo "appending sample blast results to main file.."
+	# append each blast result into one big file
+	cat /isdata/common/wbf326/viralblast/samples/$sample/$sample.blast >> /isdata/common/wbf326/viralblast/samples/all.HG.vBlast 
 	# cleanup!except for the merged bam
-	rm $sample.mchi.bam 
 	rm $sample.uchi.bam
 	rm $sample.utemp.bam
-	rm $sample.mtemp.bam
 
-	samtoools -@ 64 flagstat $sample.sorted.bam > $sample.flagstat # sanity check on the number of unmapped and mapped reads
-	cd /home/wbf326/viralblast/$sample
-	cut -f 11 $sample.blast |sort -r |  uniq -c | sort -n | tail -20 | sed -r 's/([0-9]) /\1\t/' >$sample.vHits # collects top 20 hits with counts into a single file
-	cut -f 2 $sample.vHits | while read hit; do awk "/$hit/" sorted > "$hit" ; done # loops over hits and gets reads that mapped to that particular viral hit
-	cd /home/wbf326
+	cd /isdata/common/wbf326/viralblast/samples/$sample
+
+	
+	echo "collecting viral reads counts.."
+	# collects viral hit counts for each sample split by virus hit
+	cut -f 12 $sample.blast |sort -r |  uniq -c | sort -n | sed -r 's/([0-9]) /\1\t/' >$sample.vHits
+	
+	
+	# create ID list of candidate viral reads with regex for extracting full fasta sequence
+	echo "collecting candidate reads.."
+	cut -f 1 $sample.blast > tmp
+	#cut -f 1 $sample.blast | awk '{gsub("_","\\_",$0);$0="(?s)^>"$0".*?(?=\\n(\\z|>))"}1' > temp 
+	xargs samtools faidx /isdata/common/wbf326/samples/$sample/$sample.fasta < tmp > /isdata/common/wbf326/samples/$sample/$sample.candidateReads.fasta
+
+ 	# extract read IDs from blast results on the pure viral database and use it to subset the original fasta file
+	#cat temp | parallel --no-notice /home/wbf326/./pcregrep -M {} /isdata/common/wbf326/samples/$sample/$sample.fasta >> /isdata/common/wbf326/samples/$sample/$sample.candidateReads.fasta
+	rm temp
+
+	# split the candidate read fasta files into 64 seperate files, create a list of all the files and feed it into GNU parallel to run the blast command on
+	# the seperate files per available core
+	cd /isdata/common/wbf326/samples/$sample
+	/isdata/common/wbf326/samples/./faSplit sequence $sample.candidateReads.fasta 64 $sample.split
+	ls *.fa > falist
+	
+	echo "blasting candidate reads.."
+	# blasting each of the 64 split files seperately and cleanup!
+	cat falist | parallel --no-notice 'FASTA={};blastn -num_threads 4 -evalue 1e-20 -query $FASTA -db "/isdata/common/wbf326/mixed/mixeddb.fasta" -outfmt "6 qseqid sseqid evalue bitscore sgi sacc slen qstart qend sstart send stitle" -out $FASTA.mixed'
+	cat *.mixed > $sample.mixedblast
+	rm *.mixed
+	mv $sample.mixedblast /isdata/common/wbf326/mixed/samples/$sample/$sample.mixedblast
+	rm *.fa
+	rm falist
+
+	
+	#echo "blasting candidate reads.."
+	#blastn -num_threads 64 -evalue 1e-20 -query /isdata/common/wbf326/samples/$sample/$sample.candidateReads.fasta -db "/isdata/common/wbf326/mixed/mixeddb.fasta" -outfmt '6 qseqid sseqid evalue bitscore sgi sacc slen qstart qend sstart send stitle' >/isdata/common/wbf326/mixed/samples/$sample/$sample.mixed.blast
+
+	#echo "appending sample mixed blast results to main file.."
+	#cat /isdata/common/wbf326/mixed/samples/$sample/$sample.mixed.blast >> /isdata/common/wbf326/mixed/samples/all.HG.vBlast # append each blast result into one big file
 
 done
+cd /isdata/common/wbf326/viralblast/
+cut -f 12 /isdata/common/wbf326/samples/all.vBlast |sort -r |  uniq -c | sort -n | sed -r 's/([0-9]) /\1\t/' > All.HG.vHits # get total viral counts split by virus hits
 ```
 ## 2. Filter out low complexity reads and low quality reads (dust-threshold=2.5/quality filter=50) 
 
