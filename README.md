@@ -10,7 +10,7 @@ Steps:
 
 ## 1. Command line script in bash:
 
-This script below will be the main script that automates the entire pipeline. Elements will be added after they are executed seperately and validated. Initially, the script serves to extract samples of the 1000 genomes mapped and unmapped bam files, and extracts/merges unmapped and chimeric pair reads. Fastq/a files are created from the merged bam files in the final step. The merged bam file contains reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward), and outputs a two files split on reads /1 or /2. Finally, blast and bwa are run on the locally built databases (as outlined below) and the results are stored in a seperate folder.
+This script(s) below describe the main process that automates the entire pipeline. Elements will be added after they are executed seperately and validated. Initially, the script serves to extract samples of the 1000 genomes mapped and unmapped bam files, and extracts/merges unmapped and chimeric pair reads. Fastq/a files are then created from the merged bam files in the final step. The merged bam file contain reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward), and outputs two files split on reads /1 or /2. Finally, blast and bwa are run on the locally built databases (as outlined below) and the results are stored in a seperate folder.
 
 The blast results are aggregated by counts for the top 20 hits found, and the corresponding reads for each of these hits are extracted and placed into a seperate file.
 ```bash
