@@ -154,23 +154,31 @@ $url .= "&rettype=fasta";
 $data = get($url);
 print "$data";
 ```
-Potential representative genomes from the assembly database:
-
-Fungi(14/2)
-Bacteria(1,543/1636)
-Archaea(140/389)
-
-The second number is the one reported in the paper.
-
-```bash
-("Bacteria"[Organism] OR "Fungi"[Organism] OR "Archaea" [Organism]) AND (latest[filter] AND "complete genome"[filter] AND "representative genome"[filter]) 
-```
 
 The database was then transformed into a BLAST-ready local database using blast+ with the command:
 
 ```bash
 makeblastdb -in "viraldb.fasta" -dbtype nucl -parse_seqids -out "viraldb.fasta"
 ```
+
+# Creation of Mixed/Comprehensive Database for Candidate Reads Blast:
+The comprehensive database consisted of representaitve genomes for Fungi, Bacteria and Archae, alongwith UCSC human, chimp, mouse and chicken genomes, mixed with the refseq viral database.
+
+Potential representative genomes from the assembly database:
+
+Fungi(14/2)
+Bacteria(1,543/1636)
+Archaea(140/389)
+
+The second number is the one reported in the paper. The search criteria for assembled genomes as listed below was used to extract the representative sequences:
+
+```bash
+("Bacteria"[Organism] OR "Fungi"[Organism] OR "Archaea" [Organism]) AND (latest[filter] AND "complete genome"[filter] AND "representative genome"[filter]) 
+```
+
+Later, the UCSC genomes were downloaded individually, converted from 2bit format to fasta and screen for non-unique read names before concatenating all the above as one large 17GB fasta file. To illustrate the first step, several entries are listed in different genomes as "chr(1 to 21) giving non-unique names for entires were concatenating (making it impossible to create a local database). To get around that issue, entries were modified with 'sed -i 's/old_entry/new_entry/g' where chrX for example, was renamed to chrX_chimp for all five genomes.
+
+
 
 A BWA index was constructed from the same ncbi RefSeq fna/fasta file using the command:
 
