@@ -253,5 +253,71 @@ blastn -num_threads 64 -query HG0100.fasta -db "viraldb.fasta" -outfmt '6 qseqid
 bwa mem -p viral HG0100.fastq > viralbwa
 ```
 ## 5. Viral genome sizes
+The final task is to obtain viral and non-viral hit counts before and after filtering. The first step is to concatenate all mixed blast results:
+I. find .  -name '*.mixedblast' -exec cat {} + > all.GBR.mixedblast
+
+The second step is to sort and obtain a hit count for each organism/subject found:
+II. cut -f 6,12 all.GBR.mixed  |sort -r |  uniq -c | sort -n | sed -r 's/([0-9]) /\1\t/' > all.GBR.vHits 
+
+The third step filters each mixedblast result. The filter criteria is such for every read with multiple hits in viruses and non-viral organisms, each individual viral hit bit score is checked against all non-viral hits. If one such hit has a higher score than all other non-viral hits, it is kept, or otherwise discarded if it scored lower. In the end, all viral hits that scored higher than all other non-viral hits are kept. The process is done with this Rscript:
+
+```r
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE)
+setwd(args[1])
+files <- list.files(pattern = "*.mixedblast") # find all files with mixedblast extension
+out <-sub(pattern = "(.*)\\..*$", replacement = "\\1", files) # get the sample name only
 
 
+vlist <- scan("/isdata/common/wbf326/scripts/vNames", what="", sep="\n") # create virus list of names
+dt<- read.csv(files, header = F, sep = "\t")
+colnames(dt) <- c("query", "sequence", "evalue", "bitscore", "sgi", "sacc", "sLength", "qstart", "qend", "sstart",
+                  "send", "stitle")
+
+ss <- split(dt,dt$query) # split the dataframe into a list of dataframes each with a single query ID and all of its hits
+z <- data.frame()
+for(i in 1:length(ss)){
+  boo=NULL
+  x<-ss[[i]] # extract read i
+  idx <- which (is.element(x$stitle, vlist)) # find where read i hits match viruses and subset in t below
+  t <- x[idx,]
+  for (i in nrow(t)){
+    boo <- c(boo, all(t[i,4]> x[-idx,4])) # add boolean checks where each viral hit scored higher than all other non-viral hits
+  }
+  z<-rbind(z, t[boo,]) # concatenate result to empty dataframe and increase its size and the loop continues and finds more viral hits with scores higher than non-viral hits
+}
+ 
+z<-z[complete.cases(z),] # remove NA values
+  
+write.table(z, paste(args,out,".filtered", sep=""), sep = "\t", col.names = F) # output in the same directory with  sample.filtered extension
+```
+
+The second to last step is to obtain a statistic of mapped reads to the human genome. This is automated and done sequentially with the R script above through this script:
+
+```bash
+#!/bin/bash
+
+parent="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/"
+brits=$(curl -l $parent | grep -P "HG001[1-5][0-9]$") # obtains and stores a list of 20 or so british individuals
+
+echo $brits
+
+
+#ls -d /isdata/common/wbf326/mixed/samples/GBR/*/ > GBRlist # generate list of arguments for the R script in the form of directories
+
+
+
+for sample in $brits; do
+	Rscript --vanilla analysis.R  /isdata/common/wbf326/mixed/samples/GBR/$sample
+	cd /isdata/common/wbf326/samples/GBR/$sample "/isdata/common/wbf326/mixed/samples/GBR/$sample"
+	
+	echo "Collecting mapped read info.."
+	samtools view -@ 64 -c -F 0x4 $sample.mtemp.bam > $sample.stats
+
+
+done
+
+```
+
+
+Not much later the filtered mixed blast results will be collected once again and a statistic on hits will be obtained through the same methods above.
