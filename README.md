@@ -358,3 +358,16 @@ z<-cbind(z,out)
 write.table(z, paste(args,out,".filtered", sep=""), sep = "\t", col.names = F, row.names = F, quote = F) # output in the same directory with  sample.filtered extension
 
 ```
+#### Getting A Table of Viral Genome Sizes
+
+This was a simple 3-step process: i. get viral genome IDs from the viral genome database, ii. get sequence lengths for each virus and iii. concatenate into a two column files. The second step is just a tiny bit more involved as it uses samtools faidx to generate index files from which the sequence lengths are extracted
+
+
+```bash
+grep "^>" viraldb.fasta | cut -d'|' -f3 | cut -d ' ' -f 2- > vNames
+samtools faidx viraldb.fasta
+cut -f2 viraldb.fasta.fai > vSizes
+paste vNames vSizes
+
+```
+
