@@ -200,9 +200,9 @@ done
 
 ```
 
-#### Post-Processing
+#### False Positive & Sample IDs
 
-This final step concatenate blast results, generates hit counts for quick inspection and collect stats (number of mapped reads to the human genome) in seperate files under their respective home directories. There is nothing noteworthy of mention aside from the R script used to filter out false positives (See: False Positive Tests), for the mixed blast run and appending sample names, and a simpler script for only appending sample names to the blast results for the viral blast run.
+This final step concatenate blast results, generates hit counts for quick inspection and collect stats (number of mapped reads to the human genome) in seperate files under their respective home directories. There is nothing noteworthy of mention aside from the R script used to filter out false positives (See: False Positive Tests) for the mixed blast run and appending sample names, and a simpler script for only appending sample names to the blast results for the viral blast run.
 
 
 For the second round of blast (mixed blast):
