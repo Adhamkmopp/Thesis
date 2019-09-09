@@ -1,4 +1,4 @@
-# Bionformatics MSc, Thesis: Viral Presence In The 1000 Genomes Database
+# Bionformatics MSc, Thesis: The Human Virome In The 1000 Genomes Database
 
 
 
