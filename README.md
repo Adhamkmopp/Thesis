@@ -29,7 +29,7 @@ if [ ! -e "/isdata/common/wbf326/samples/GBR2/$sample/$sample.fasta" ];then
 	mkdir /isdata/common/wbf326/samples/GBR2/$sample # sets up the structure of the directory such that each sample is placed alone by itself
 	cd /isdata/common/wbf326/samples/GBR2$sample 
 	page="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/$sample/alignment/" # sets up the ftp directory path by inserting the sample
-	#mapped=$(curl -l $page | grep -P ".+\.mapped.+\.bam$"); # sets up the ftp path to the mapped bam file and unmapped right below
+	mapped=$(curl -l $page | grep -P ".+\.mapped.+\.bam$"); # sets up the ftp path to the mapped bam file and unmapped right below
 	unmapped=$(curl -l $page | grep -P ".+\.unmapped.+\.bam$");
 	echo "Mapped file is: $mapped"
 	echo "Unmapped file is: $unmapped"
