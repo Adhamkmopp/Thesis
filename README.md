@@ -31,26 +31,26 @@ if [ ! -e "/isdata/common/wbf326/samples/GBR2/$sample/$sample.fasta" ];then
 	page="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/$sample/alignment/" # sets up the ftp directory path by inserting the sample
 	#mapped=$(curl -l $page | grep -P ".+\.mapped.+\.bam$"); # sets up the ftp path to the mapped bam file and unmapped right below
 	unmapped=$(curl -l $page | grep -P ".+\.unmapped.+\.bam$");
-	#echo "Mapped file is: $mapped"
+	echo "Mapped file is: $mapped"
 	echo "Unmapped file is: $unmapped"
 
 	echo "Downloading mapped and unmapped bam files.."
 	curl $page$unmapped --output $sample.utemp.bam	 # downloads the unmapped bam file
-	#curl $page$mapped --output $sample.mtemp.bam # downloads the mapped bam file from the ftp list
+	curl $page$mapped --output $sample.mtemp.bam # downloads the mapped bam file from the ftp list
 
 
 	echo "Collecting mapped read info.."
 
-	#samtools view -@ 64 -c -F 0x4 $sample.mtemp.bam > $sample.stats
+	samtools view -@ 64 -c -F 0x4 $sample.mtemp.bam > $sample.stats
 
 	echo "extracting mapped singletons.."
-	#samtools view -@ 64 -h -F 0x4 -f 0x8 $sample.mtemp.bam -o $sample.mchi.txt # extracts definetly mapped with unmapped pair reads into .mchi
+	samtools view -@ 64 -h -F 0x4 -f 0x8 $sample.mtemp.bam -o $sample.mchi.txt # extracts definetly mapped with unmapped pair reads into .mchi
 
 	echo "extracting unmapped singletons.."
-	#samtools view -@ 64 -h -f 0x4 $sample.mtemp.bam -o $sample.uchi.bam # extracts unmapped reads into .uchi
+	samtools view -@ 64 -h -f 0x4 $sample.mtemp.bam -o $sample.uchi.bam # extracts unmapped reads into .uchi
 
 	echo "merging unmapped singletons with unmapped pairs.."
-	#samtools merge -@ 64 -n $sample.merged.bam $sample.uchi.bam $sample.utemp.bam # merges ALL mappped and unmapped reads
+	samtools merge -@ 64 -n $sample.merged.bam $sample.uchi.bam $sample.utemp.bam # merges ALL mappped and unmapped reads
 
 	echo "creating fastq files from unmapped reads.."
 	samtools fastq -@ 64 -N -t -1 $sample.1.fastq -2 $sample.2.fastq $sample.utemp.bam # places forward/backward reads into respective fastq files
