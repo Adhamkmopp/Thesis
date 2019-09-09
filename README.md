@@ -11,7 +11,7 @@ Initially, the plan was to run on blast on a pure viral database for all 800 sam
 
 ### Extraction and Merging of Unmapped Reads Into FASTA/Q Files
 
-This script served as the official starting point of the project. It's main task is to download mapped and unammped reads in bam format and ultimately generate FASTA files for blasting, while keeping things organized and tidy. It downloads samples of the 1000 genomes mapped and unmapped bam files by populations (this one is generically set to GBR), and extracts and merges unmapped and chimeric pair reads. Fastq/a files are then created from the merged bam files in the final step for later use. The merged bam file contain reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward), and outputs two files split on reads /1 or /2.
+This script served as the official starting point of the project. Its main task is to download mapped and unammped reads in bam format from the 1000 genomes repository, and ultimately generate FASTA files for blasting, while doing general housekeeping like making directories for separate samples if needed. It downloads samples of the 1000 genomes mapped and unmapped bam files by population (this one is generically set to GBR), and extracts and merges unmapped and chimeric pair reads. Fastq/a files are then created from the merged bam files in the final step for later use. The merged bam file contains reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward), and outputs two files split on reads /1 or /2.
 
 Low complexity reads and reads where 50% of bases have a quality score (Phred) of 3 and below are filtered out before finally, the FASTQ file is converted to FASTA for blasting.
 ```bash
@@ -74,9 +74,11 @@ done
 ## BLAST and GNUParallel
 #### Running blastn On All Samples and Getting Candidate Reads
 
-The purpose of this step is to run blast on the fasta files on the locally built viral database (see: Creation Of A Local Viral Database), filtering out all phage results and creating a set of candidate reads from the filtered blast results. The key steps here firstly removing duplicate reads from the sample.fasta file. This is necessary as it interferes with faidx indexing, without which subsetting the sample.fasta file with an ID list would have taken much longer than necessary. The second step is subsetting the fasta file with an ID list created from the viral blast results, thereby creating the \*.candidateReads.fasta file for each sample for the second round of analysis (mixed blast or bwa) 
+With FASTA files in hand, the purpose of this step is to BLAST on the locally built viral database (see: Creation Of A Local Viral Database), filtering out all phage results and to generate a set of candidate reads from the filtered blast results. 
 
-Another key point deserve seperate mention; the fasta file is split into 56 seperate parts using fasplit, and 56 blasts are run in parallel which speeds up the process significantly, as it makes full use of avaiable cores on the server. Ironically, the slowest step was in extracting candidate reads from a list of IDs. Several attempts to speed up using grep and pyfaidx, and even at attempt at parallelizing pyfaidx proved unfruitful, but they are included and commented out in the script for the sake of propriety. Seqtk , a lightweight C++ program was atleast several magnitude faster than any of the aforementioned.
+The key steps here are firstly removing duplicate reads from each sample FASTA file. The second step is generating a simple list of read IDs from the viral BLAST hits to be used in extracting FASTQ entries (the candidate reads) for use in the second round of BLAST/BWA (the "*.candidateReads.fasta" files for each sample) 
+
+Another key point deserve separate mention; the fasta file is split into 48 separate parts using fasplit, and 48 blasts are run in parallel which speeds up the process significantly. Ironically, the slowest step was in extracting candidate reads using the list of IDs. Several attempts to speed up using grep and pyfaidx, and even at attempt at parallelizing pyfaidx proved unfruitful, but they are included and commented out in the script for the sake of propriety. Seqtk , a lightweight C++ program was atleast several magnitude faster than any of the aforementioned.
 
 ```bash
 #!/bin/bash
@@ -95,18 +97,18 @@ for sample in $brits; do
 	if [[ -e "/isdata/common/wbf326/samples/$pop/$sample/$sample.fasta" && ! -e "/isdata/common/wbf326/viralblast/samples/$pop/$sample/$sample.candidateReads.fasta" ]]; then
 	mkdir /isdata/common/wbf326/viralblast/samples/$pop/$sample
 	cd /isdata/common/wbf326/samples/$pop/$sample
+	
 	# removing duplicates from fasta
-
-	echo "removing duplicat reads.."
+	echo "removing duplicate reads.."
 	cat $sample.fasta | /isdata/common/wbf326/./seqkit rmdup -o $sample.clean.fasta 
-	# split the candidate read fasta files into 64 seperate files, create a list of all the files and feed it into GNU parallel to run the blast command on
+	# split the candidate read fasta files into 48 seperate files, create a list of all the files and feed it into GNU parallel to run the blast command on
 	# the seperate files per available core
-	/isdata/common/wbf326/./faSplit sequence $sample.clean.fasta 64 $sample.split
+	/isdata/common/wbf326/./faSplit sequence $sample.clean.fasta 48 $sample.split
 	ls *.fa > falist
 	
 	echo "blasting...$sample"
 	# outputs blast results on the total viral database with a custom column format specified elsewhere
-	cat falist | parallel -j32 --no-notice 'FASTA={};blastn -evalue 1e-10 -query $FASTA -db "/isdata/common/wbf326/viralblast/viraldb.fasta" -outfmt "6 qseqid sseqid evalue pident bitscore score gapopen gaps positive mismatch length qstart qend sstart send slen sacc stitle" -out $FASTA.blasted'
+	cat falist | parallel -j48--no-notice 'FASTA={};blastn -evalue 1e-10 -query $FASTA -db "/isdata/common/wbf326/viralblast/viraldb.fasta" -outfmt "6 qseqid sseqid evalue pident bitscore score gapopen gaps positive mismatch length qstart qend sstart send slen sacc stitle" -out $FASTA.blasted'
 	cat *.blasted > $sample.blast
 	rm *.blasted
 	mv $sample.blast /isdata/common/wbf326/viralblast/samples/$pop/$sample/$sample.blast
@@ -118,7 +120,7 @@ for sample in $brits; do
 	sed -i.bak '/phage/d' $sample.blast
 	
 	echo "collecting candidate reads.."
-	# splitting the file into 32 pieces, sorting, getting unique hits in parallel and merging into an intermediate file before sorting to find unique hits one and final addtional time
+	# splitting the file into 32 pieces, sorting, getting unique hits in parallel and merging into an intermediate file before sorting again to find unique hits one and final addtional time
 	# speeds up sorting considerably
 	split --number=l/32 $sample.blast
 	ls x* > xlist
@@ -140,9 +142,8 @@ done
 
 #### Running blastn On Candidate Reads Against a Comprehensive Database
 
-Candidate reads are split once again and a number of blasts are run in parallel, resulting in a final \*.mixedblast output. The difference between the parallelization process of this process and the previous one, is that the candidate reads are split into 1200 pieces, and blastn is run in batches of 56, once again making full use of all available cores. It was a necessary step as each individual blast run could take up as much as 20GB of space, if the files were split into 56 exact pieces instead, effectively using up available space and stalling. Running as much as 67200 blast runs on a sample did not increase overall running time of the whole process, leading one to surmise that the run time is linearly proportional to the query size.
-
-NOTE: This was only included to further highlight how much GNUparallel saved this project. It mirrors the regular blastn above. The script for BWA was not included because it is rudimentary to the ones for blastn.
+The second round of BLAST was against a much larger database, so now it became an issue of space rather than speed, as each individual BLAST could take up to 20GBs of RAM.
+Candidate reads are split once again and a number of blasts are run in parallel, resulting in a final output (" *.mixedblast"). The difference between the parallelization process of this process and the previous one, is that the candidate reads are split into 1200 pieces each, and blastn is run in batches of 48. That was, space was conserved without sacrificing speed, as BLAST run time is linearly proportional to the query size.
 
 
 ```bash
@@ -168,8 +169,8 @@ for sample in $brits; do
 	ls *.fa > falist
 
 	echo "blasting candidate reads..$sample"
-	# blasting each of the 64 split files seperately and cleanup!
-	cat falist | parallel -j52 --no-notice 'FASTA={};blastn -evalue 1e-20 -query $FASTA -db "/isdata/common/wbf326/bwaplus/mixedblastdb.fasta" -outfmt "6 qseqid sseqid evalue pident bitscore score gapopen gaps positive mismatch length qstart qend sstart send slen sacc stitle" -out $FASTA.mixed'
+	# blasting each of the 48 split files seperately and cleanup!
+	cat falist | parallel -j48 --no-notice 'FASTA={};blastn -evalue 1e-20 -query $FASTA -db "/isdata/common/wbf326/bwaplus/mixedblastdb.fasta" -outfmt "6 qseqid sseqid evalue pident bitscore score gapopen gaps positive mismatch length qstart qend sstart send slen sacc stitle" -out $FASTA.mixed'
 	cat *.mixed > $sample.mixedblast
 	rm *.mixed
 	
@@ -222,7 +223,6 @@ cut -f 18 all.$pop.vblast  |sort -r |  uniq -c | sort -n | sed -r 's/([0-9]) /\1
 
 ```
 
-
 This R script filters false positives on the mixed blast run. It removes viral hits where there were hits to other organisms, with a bit score higher than or equal to the viral hit. So in principle, a read with multiple hits, one several to viral genomes and to other organisms, may have some viral hits removed if it has a lower bit score than any of the hits to non-viral organisms. The input is the directory where the \*.mixedblast file is, the output is placed in the same directory as \*.mixed.filtered.
 
 
@@ -272,7 +272,7 @@ write.table(z, paste(args,out,".filtered", sep=""), sep = "\t", col.names = F, r
 
 #### Manipulating BWA Strings
 
-The script below was made solely to manipulate and translate the CIGAR string and TAGs field from BWA results to ascertain the number of gaps, matches and mismatches for every hit, and to subsequently translate into a score that is for all intents and purposes, BLAST-equivalent.
+The script below was made solely to manipulate and translate the CIGAR string and TAGs field from BWA results to ascertain the number of gaps, matches and mismatches for every hit, and to subsequently translate that into a score that is for all intents and purposes, BLAST-equivalent.
 
 ```r
 #!/usr/bin/env Rscript
@@ -342,7 +342,6 @@ for(i in 1:length(ss)){
 }
 
 
-
 colnames(z) <-  c("query", "flag", "subject", "sstart", "Mapq", "cigar", "mismatches", "MD", "AS")
 z<-z[complete.cases(z),] # remove NA values
 z<-cbind(z,out)
@@ -351,7 +350,7 @@ z$subject <- v$V2[match(z$subject, v$V1)]
 write.table(z, paste(args,out,".filteredplus", sep=""), sep = "\t", col.names = F, row.names = F, quote = F) # output in the same directory with  sample.filtered extension
 ```
 ## The Main Script
-The R script below does everything all in all. It does some housekeeping firstly (like transforming problematic viral names into simpler names and such) and performs various other transformations for generating tabular summary statitsics and the plots and figures (base-r, NOT ggplot2). But the main bulk of the computation occurs in the bwaGitme and bwaReadme functions that calculated viral abundances (it was also the most enjoyable to code). The output was then collected and presented as part of the final report.
+The R script below does everything all in all. It does some heavy housekeeping firstly (like transforming problematic viral names into simpler names and such) and performs various other transformations for generating tabular summary statitsics and the plots and figures (base-r, NOT ggplot2). But the main bulk of the computation occurs in the bwaGitme and bwaReadme functions that calculated viral abundances (it was also the most enjoyable to code). The output was then collected and presented as part of the final report.
 
 ```r
 library(scales)
