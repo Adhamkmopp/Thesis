@@ -11,7 +11,7 @@ Initially, the plan was to run on blast on a pure viral database for all 800 sam
 
 ### Extraction and Merging of Unmapped Reads Into FASTA/Q Files
 
-This script serves to extract samples of the 1000 genomes mapped and unmapped bam files by populations (this one is generically set to GBR), and extracts/merges unmapped and chimeric pair reads. Fastq/a files are then created from the merged bam files in the final step. The merged bam file contain reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward), and outputs two files split on reads /1 or /2.
+This script served as the official starting point of the project. It's main task is to download mapped and unammped reads in bam format and ultimately generate FASTA files for blasting, while keeping things organized and tidy. It downloads samples of the 1000 genomes mapped and unmapped bam files by populations (this one is generically set to GBR), and extracts and merges unmapped and chimeric pair reads. Fastq/a files are then created from the merged bam files in the final step for later use. The merged bam file contain reads sorted by name, while the samtools fastq converter appends a /1 or /2 according to the read flag (forward/backward), and outputs two files split on reads /1 or /2.
 
 Low complexity reads and reads where 50% of bases have a quality score (Phred) of 3 and below are filtered out before finally, the FASTQ file is converted to FASTA for blasting.
 ```bash
